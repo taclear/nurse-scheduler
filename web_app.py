@@ -47,6 +47,19 @@ if st.button("🚀 AI 근무표 자동 생성 시작", use_container_width=True)
                         
                         output_filename = "result_schedule.xlsx"
                         wb.save(output_filename)
+
+                        # ... 기존 코드 ...
+                        wb = ns.write_outputs(wb, cfg, nurses, holidays, no_night, off_requests, prefs, schedule, pref_miss, is_ghost)
+                        
+                        # 👇👇 여기서부터 3줄 추가 👇👇
+                        for sheet_name in wb.sheetnames:
+                            if sheet_name != "Schedule":  # 스케줄 시트가 아니면
+                                del wb[sheet_name]        # 전부 삭제해라!
+                        # 👆👆 여기까지 👆👆
+
+                        output_filename = "result_schedule.xlsx"
+                        wb.save(output_filename)
+                        # ... 기존 코드 ...
                         
                         st.balloons() # 성공 축하 풍선 애니메이션! 🎈
                         st.success(f"✅ 최적의 근무표 생성 완료! (AI가 받은 벌점: {solver.ObjectiveValue()}점)")

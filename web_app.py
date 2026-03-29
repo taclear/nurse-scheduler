@@ -10,6 +10,26 @@ st.title("👩‍⚕️ 병동 간호사 스마트 스케줄러 AI")
 st.markdown("수간호사 선생님의 스트레스를 0으로! 엑셀 파일을 올리면 AI가 최적의 근무표를 짜줍니다.")
 st.divider()
 
+st.markdown("### 1️⃣ 먼저 빈 양식을 다운로드하세요 (엑셀이 없는 경우)")
+try:
+    # 깃허브에 올려둔 깨끗한 양식 파일을 읽어옵니다
+    with open("nurse_scheduler_complete.xlsx", "rb") as template_file:
+        st.download_button(
+            label="📝 빈 근무표 엑셀 양식 다운로드",
+            data=template_file,
+            file_name="기본_근무표_양식.xlsx", # 다운받을 때 저장될 예쁜 이름
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+except FileNotFoundError:
+    st.info("💡 앗! 관리자가 서버에 기본 양식을 아직 안 올려뒀네요. 깃허브에 엑셀 파일을 업로드해주세요!")
+
+st.markdown("### 2️⃣ 작성한 엑셀 파일을 업로드하세요")
+# 4. 파일 업로드 칸 만들기
+uploaded_file = st.file_uploader("다운받은 양식을 작성한 뒤 여기에 올려주세요!", type=['xlsx'])
+
+if st.button("🚀 AI 근무표 자동 생성 시작", use_container_width=True):
+# (이 아래는 기존 코드 그대로 둡니다)
+    
 # 파일 업로드 칸
 uploaded_file = st.file_uploader("여기에 세팅된 엑셀 파일(.xlsx)을 드래그해서 올려주세요!", type=['xlsx'])
 

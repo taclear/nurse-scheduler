@@ -53,11 +53,18 @@ if st.button("🚀 AI 근무표 자동 생성 시작", use_container_width=True)
                         schedule = ns.extract_schedule(solver, x, nurses, cfg)
                         wb = ns.write_outputs(wb, cfg, nurses, holidays, no_night, off_requests, prefs, schedule, pref_miss, is_ghost)
                         
-                        # 🌟 수정된 기능: 필요한 시트 4개만 남기고 다 지우기
+                        # 🌟 완벽하고 안전한 시트 삭제 기능 (에러 방어막 추가)
                         sheets_to_keep = ["Schedule", "RequestsSummary", "Validation", "DailyCoverage"]
-                        for sheet_name in wb.sheetnames:
-                            if sheet_name not in sheets_to_keep:
-                                del wb[sheet_name]
+                        
+                        # 지울 시트들의 목록을 안전하게 복사해둡니다.
+                        sheets_to_delete = [sheet for sheet in wb.sheetnames if sheet not in sheets_to_keep]
+                        
+                        for sheet_name in sheets_to_delete:
+                            try:
+                                if sheet_name in wb:
+                                    del wb[sheet_name]
+                            except KeyError:
+                                pass # 에러가 나도 기절하지 말고 무시하고 계속 진행해!
                         
                         output_filename = "result_schedule.xlsx"
                         wb.save(output_filename)

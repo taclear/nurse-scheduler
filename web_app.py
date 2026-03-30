@@ -53,9 +53,10 @@ if st.button("🚀 AI 근무표 자동 생성 시작", use_container_width=True)
                         schedule = ns.extract_schedule(solver, x, nurses, cfg)
                         wb = ns.write_outputs(wb, cfg, nurses, holidays, no_night, off_requests, prefs, schedule, pref_miss, is_ghost)
                         
-                        # 🌟 새로 추가한 기능: 스케줄 시트 1개만 남기고 다 지우기
+                        # 🌟 수정된 기능: 필요한 시트 4개만 남기고 다 지우기
+                        sheets_to_keep = ["Schedule", "RequestsSummary", "Validation", "DailyCoverage"]
                         for sheet_name in wb.sheetnames:
-                            if sheet_name != "Schedule":
+                            if sheet_name not in sheets_to_keep:
                                 del wb[sheet_name]
                         
                         output_filename = "result_schedule.xlsx"
@@ -66,7 +67,7 @@ if st.button("🚀 AI 근무표 자동 생성 시작", use_container_width=True)
                         
                         with open(output_filename, "rb") as f:
                             st.download_button(
-                                label="📥 완성된 스케줄 엑셀 다운로드 (스케줄 시트만 포함)",
+                                label="📥 완성된 스케줄 엑셀 다운로드 (보고서 포함)",
                                 data=f,
                                 file_name="완성된_병동근무표.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

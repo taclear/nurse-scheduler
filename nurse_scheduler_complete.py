@@ -82,7 +82,6 @@ try:
         return cfg
 
     def load_inputs(path):
-        # 🌟 수식 읽기 에러 방지 업데이트: 결과값 읽기용(wb_data)과 저장용(wb) 분리
         wb_data = load_workbook(path, data_only=True) 
         wb = load_workbook(path) 
         
@@ -95,6 +94,7 @@ try:
         max_offs = []
         raw_preceptors = []
         is_ghost = []  
+        is_junior = []  # 🌟 막내 여부를 담을 리스트 추가
         nurse_index = {}
         ws_nurses = wb_data["Nurses"]
         r = 2
@@ -138,6 +138,11 @@ try:
             if "NODUTY" in prec_str.upper().replace(" ", ""):
                 ghost_flag = True
                 prec_str = re.sub(r'(?i)\(?\s*no\s*duty\s*\)?', '', prec_str).strip()
+
+            # 🌟 엑셀 6번째 열(프리셉터 옆칸)에서 막내(Y/N) 값 읽어오기
+            jun_val = ws_nurses.cell(r, 6).value
+            jun_str = str(jun_val).strip().upper() if jun_val else "N"
+            is_junior.append(jun_str)
 
             raw_preceptors.append(prec_str)
             is_ghost.append(ghost_flag)
@@ -184,6 +189,7 @@ try:
                 holidays.add(dt.day - 1)
 
         cfg["extra_reqs"] = dict(extra_reqs)
+        cfg["is_junior"] = is_junior # 🌟 읽어온 막내 데이터를 cfg 바구니에 안전하게 담아서 보냄
 
         no_night = [False] * len(nurses)
         ws_r = wb_data["Restrictions"]
@@ -292,7 +298,7 @@ try:
             )
             if night_avail < req["N"]:
                 issues.append(
-                    f"Day {d+1}: 나이트 가능한 인원이 {night_avail}명뿐이라 필요 인원({req['N']}명)을 채울 수 없습니다."
+                    f"Day {d+1}: 나이트 가능한 인원이 {night_avail}명뿐이라 필요 인원({req['N']}명)을 채울 수 채울 수 없습니다."
                 )
 
         return issues
@@ -499,6 +505,22 @@ try:
                 pref_miss[n, d] = miss
                 model.Add(miss == 1 - sum(x[n, d, p] for p in pref_list))
                 obj_terms.append(pref_weight * miss)
+
+        # ====================================================================
+        # 🌟 [추가 로직] 막내 간호사 동시 근무 방지 (벌점 시스템)
+        # ====================================================================
+        is_junior_list = cfg.get("is_junior", [])
+        if is_junior_list:
+            junior_nurses = [i for i, jun in enumerate(is_junior_list) if jun == 'Y']
+            if len(junior_nurses) > 0:
+                JUNIOR_OVERLAP_PENALTY = 5000
+                for d in range(D):
+                    for s in WORK_CODES: # D, E, N, M 모든 근무를 감시
+                        current_juniors = sum(x[n, d, s] for n in junior_nurses)
+                        excess_juniors = model.NewIntVar(0, len(junior_nurses), f'excess_juniors_d{d}_{s}')
+                        model.Add(current_juniors - 1 <= excess_juniors)
+                        obj_terms.append(excess_juniors * JUNIOR_OVERLAP_PENALTY)
+        # ====================================================================
 
         weekend_days = [d for d in range(D) if day_type(cfg, holidays, d) == "Weekend/Holiday"]
         

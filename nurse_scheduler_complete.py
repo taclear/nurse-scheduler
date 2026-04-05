@@ -94,7 +94,7 @@ try:
         max_offs = []
         raw_preceptors = []
         is_ghost = []  
-        is_junior = []  # 🌟 막내 여부를 담을 리스트 추가
+        is_junior = []  
         nurse_index = {}
         ws_nurses = wb_data["Nurses"]
         r = 2
@@ -139,7 +139,6 @@ try:
                 ghost_flag = True
                 prec_str = re.sub(r'(?i)\(?\s*no\s*duty\s*\)?', '', prec_str).strip()
 
-            # 🌟 엑셀 6번째 열(프리셉터 옆칸)에서 막내(Y/N) 값 읽어오기
             jun_val = ws_nurses.cell(r, 6).value
             jun_str = str(jun_val).strip().upper() if jun_val else "N"
             is_junior.append(jun_str)
@@ -189,7 +188,7 @@ try:
                 holidays.add(dt.day - 1)
 
         cfg["extra_reqs"] = dict(extra_reqs)
-        cfg["is_junior"] = is_junior # 🌟 읽어온 막내 데이터를 cfg 바구니에 안전하게 담아서 보냄
+        cfg["is_junior"] = is_junior
 
         no_night = [False] * len(nurses)
         ws_r = wb_data["Restrictions"]
@@ -345,13 +344,18 @@ try:
                     else:
                         missing_senior = model.NewBoolVar(f"missing_senior_{d}_{s}")
                         model.Add(missing_senior >= 1 - senior_count)
-                        obj_terms.append(1000 * missing_senior)
+                        
+                        # 🌟 밸런스 패치 1: 차지 없음 벌점 1,000 -> 10,000점 폭등
+                        obj_terms.append(10000 * missing_senior) 
                         
                         if req[s] >= 2:
-                            ideal_max_senior = max(1, req[s] - 1)
+                            # 🌟 밸런스 패치 2: 시니어 몰림 방지 공식 (필요 인원의 절반까지만 허용)
+                            ideal_max_senior = max(1, req[s] // 2) 
                             extra_senior = model.NewIntVar(0, N, f"extra_senior_{d}_{s}")
                             model.Add(senior_count - ideal_max_senior <= extra_senior)
-                            obj_terms.append(400 * extra_senior)
+                            
+                            # 🌟 밸런스 패치 3: 시니어 몰림 벌점 400 -> 1,000점 상향
+                            obj_terms.append(1000 * extra_senior) 
 
         for n in range(N):
             for d, rank in off_requests[n].items():
@@ -506,21 +510,17 @@ try:
                 model.Add(miss == 1 - sum(x[n, d, p] for p in pref_list))
                 obj_terms.append(pref_weight * miss)
 
-        # ====================================================================
-        # 🌟 [추가 로직] 막내 간호사 동시 근무 방지 (벌점 시스템)
-        # ====================================================================
         is_junior_list = cfg.get("is_junior", [])
         if is_junior_list:
             junior_nurses = [i for i, jun in enumerate(is_junior_list) if jun == 'Y']
             if len(junior_nurses) > 0:
                 JUNIOR_OVERLAP_PENALTY = 5000
                 for d in range(D):
-                    for s in WORK_CODES: # D, E, N, M 모든 근무를 감시
+                    for s in WORK_CODES:
                         current_juniors = sum(x[n, d, s] for n in junior_nurses)
                         excess_juniors = model.NewIntVar(0, len(junior_nurses), f'excess_juniors_d{d}_{s}')
                         model.Add(current_juniors - 1 <= excess_juniors)
                         obj_terms.append(excess_juniors * JUNIOR_OVERLAP_PENALTY)
-        # ====================================================================
 
         weekend_days = [d for d in range(D) if day_type(cfg, holidays, d) == "Weekend/Holiday"]
         
